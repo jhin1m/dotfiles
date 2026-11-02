@@ -1,0 +1,33 @@
+# Ghostty — cấu hình ưu tiên dễ đọc (02/11/2026)
+# Đổi nhanh từng mục: `gcfg` (menu) hoặc `gtheme` (chọn theme, xem trước trực tiếp)
+
+# --- Màu ---
+theme = TokyoNight
+# Nâng tương phản khi chữ màu nằm trên nền màu (1 = tắt, 21 = trắng/đen tuyệt đối)
+minimum-contrast = 1.3
+
+# --- Chữ ---
+font-family = Maple Mono NF
+font-size = 15
+# Giãn dòng để mắt bớt dính dòng
+adjust-cell-height = 12%
+font-thicken = true
+
+# --- Cửa sổ ---
+# Nền đặc: không trong suốt/blur để chữ không lẫn với hình phía sau
+background-opacity = 1
+window-padding-x = 14
+window-padding-y = 10
+window-padding-balance = true
+window-padding-color = extend
+macos-titlebar-style = transparent
+# Pane không được focus mờ đi một chút để biết đang gõ ở đâu
+unfocused-split-opacity = 0.8
+
+# --- Con trỏ ---
+cursor-style = block
+cursor-style-blink = false
+mouse-hide-while-typing = true
+
+# --- Hành vi ---
+scroll-to-bottom = keystroke

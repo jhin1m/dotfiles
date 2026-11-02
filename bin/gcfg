@@ -1,0 +1,105 @@
+#!/bin/zsh
+# gcfg — chỉnh cấu hình Ghostty bằng fzf, rê tới đâu áp dụng tới đó.
+#   gcfg                 menu chọn mục cấu hình (khung phải hiện tài liệu của mục)
+#   gcfg <mục>           chọn giá trị cho một mục, vd: gcfg font-size
+#   gcfg <mục> <giá trị> đặt thẳng, vd: gcfg cursor-style bar
+#   gcfg <mục> -         xoá dòng đó khỏi config (về mặc định)
+# Trong danh sách giá trị: Enter giữ, Esc trả về giá trị cũ, gõ giá trị tuỳ ý rồi Enter cũng được.
+CFG="$HOME/Library/Application Support/com.mitchellh.ghostty/config"
+GH=/Applications/Ghostty.app/Contents/MacOS/ghostty
+CACHE="$HOME/.cache/gcfg"; mkdir -p "$CACHE"
+SELF=${0:A}
+
+# Danh sách giá trị gợi ý cho các mục hay dùng; mục khác thì gõ tay
+typeset -A PRESET=(
+  font-size               "11 12 13 14 15 16 17 18 20 22 24"
+  font-thicken            "true false"
+  font-thicken-strength   "0 1 16 32 64 96 128 192 255"
+  background-opacity      "1 0.97 0.94 0.92 0.9 0.88 0.85 0.82 0.8 0.75 0.7"
+  background-blur         "false true 10 20 30 40 60 80"
+  cursor-style            "block bar underline block_hollow"
+  cursor-style-blink      "true false"
+  window-padding-x        "0 2 4 6 8 12 16 24"
+  window-padding-y        "0 2 4 6 8 12 16 24"
+  window-padding-balance  "true false"
+  adjust-cell-height      "0 5% 10% 15% 20% 25%"
+  adjust-cell-width       "0 -5% 5% 10%"
+  minimum-contrast        "1 1.1 1.5 2 3 4.5"
+  macos-titlebar-style    "native transparent tabs hidden"
+  macos-option-as-alt     "false true left right"
+  mouse-hide-while-typing "true false"
+  copy-on-select          "false true clipboard"
+  scroll-to-bottom        "keystroke output keystroke,output"
+  unfocused-split-opacity "1 0.9 0.8 0.7 0.6"
+)
+# Mục chỉ có hiệu lực sau khi khởi động lại Ghostty / ở cửa sổ mới
+typeset -A NOTE=(
+  background-opacity   "macOS: cần thoát hẳn Ghostty (⌘Q) rồi mở lại"
+  macos-titlebar-style "chỉ áp dụng cho cửa sổ mới"
+  window-padding-x     "chỉ áp dụng cho cửa sổ/tab mới"
+  window-padding-y     "chỉ áp dụng cho cửa sổ/tab mới"
+)
+# Các mục được lặp nhiều dòng — không sửa kiểu thay-1-dòng được
+REPEAT="palette keybind font-feature font-variation config-file command-palette-entry"
+
+_reload() {
+  osascript -e 'tell application "Ghostty" to perform action "reload_config" on focused terminal of selected tab of front window' >/dev/null 2>&1
+}
+_get() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$CFG" | head -1; }
+
+# Ghi KEY=VAL vào config: thay dòng đầu tiên nếu có, không thì thêm cuối file; VAL="-" là xoá dòng
+_set() {
+  K="$1" V="$2" awk '
+    BEGIN { k = ENVIRON["K"]; v = ENVIRON["V"] }
+    { line = $0; sub(/^[ \t]+/, "", line); split(line, a, /[ \t]*=/) }
+    !done && a[1] == k { done = 1; if (v != "-") print k " = " v; next }
+    { print }
+    END { if (!done && v != "-") print k " = " v }
+  ' "$CFG" > "$CFG.tmp" && cat "$CFG.tmp" > "$CFG" && rm -f "$CFG.tmp"
+  _reload
+}
+
+_values() {
+  case "$1" in
+    theme)       "$GH" +list-themes --plain --color="${GTHEME_COLOR:-all}" | sed 's/ (resources)$//; s/ (user)$//' ;;
+    font-family) "$GH" +list-fonts 2>/dev/null | grep -v '^[[:space:]]' | grep -v '^$' ;;
+    *)           [[ -n "${PRESET[$1]}" ]] && print -l ${=PRESET[$1]} ;;
+  esac
+}
+
+_pick_value() {
+  local key="$1" orig=$(_get "$1") note="${NOTE[$1]}" out q sel
+  out=$(_values "$key" | fzf --prompt="$key${orig:+ ($orig)} > " --height=40% --reverse --no-sort \
+        --header="${note:+⚠ $note · }Enter giữ · Esc huỷ · gõ giá trị khác rồi Enter" \
+        --print-query --bind "focus:execute-silent($SELF --set ${(q)key} {})")
+  local rc=$?
+  q=$(sed -n 1p <<<"$out"); sel=$(sed -n 2p <<<"$out")
+  # rc 1 = không khớp dòng nào → lấy chữ đã gõ; rc 130 = Esc
+  if (( rc == 0 )) && [[ -n "$sel" ]]; then _set "$key" "$sel"; echo "$key = $sel"
+  elif (( rc == 1 )) && [[ -n "$q" ]]; then _set "$key" "$q"; echo "$key = $q"
+  else _set "$key" "${orig:--}"; echo "Giữ nguyên: $key = ${orig:-(mặc định)}"; fi
+  [[ -n "$note" ]] && echo "⚠ $note"
+}
+
+_menu() {
+  local docs="$CACHE/docs-$("$GH" --version | sed -n 's/^Ghostty //p;q').txt"
+  [[ -s "$docs" ]] || "$GH" +show-config --default --docs > "$docs" 2>/dev/null
+  local key
+  key=$({
+    # mục đang có trong config + mục có gợi ý lên đầu, rồi tới toàn bộ mục còn lại
+    { sed -n 's/^[[:space:]]*\([a-z0-9-]*\)[[:space:]]*=.*/\1/p' "$CFG"; echo theme font-family; print -l ${(k)PRESET}; } | awk '!s[$0]++'
+    "$GH" +show-config --default 2>/dev/null | sed 's/ =.*//'
+  } | awk '!s[$0]++' | grep -vxF -f <(print -l ${=REPEAT}) |
+    while read -r k; do printf '%-28s %s\n' "$k" "$(_get "$k")"; done |
+    fzf --prompt="ghostty > " --height=60% --reverse --no-sort \
+        --header="Chọn mục cấu hình (cột phải = giá trị hiện tại)" \
+        --preview "awk -v k={1} '/^#/{b=b\"\\n\"\$0;next} \$1==k{print substr(b,2);exit} {b=\"\"}' ${(q)docs} | sed 's/^# \\{0,1\\}//'" \
+        --preview-window=right,55%,wrap | awk '{print $1}')
+  [[ -n "$key" ]] && _pick_value "$key"
+}
+
+case "$1" in
+  --set) _set "$2" "$3" ;;
+  "")    _menu ;;
+  *)     if [[ -n "$2" ]]; then _set "$1" "${*[2,-1]}"; [[ "$2" == - ]] && echo "Đã xoá $1 (về mặc định)" || echo "$1 = ${*[2,-1]}"; else _pick_value "$1"; fi ;;
+esac

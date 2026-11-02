@@ -1,0 +1,3 @@
+#!/bin/zsh
+# gtheme — lối tắt của `gcfg theme` (mặc định chỉ hiện theme tối)
+GTHEME_COLOR=${GTHEME_COLOR:-dark} exec gcfg theme "$@"
