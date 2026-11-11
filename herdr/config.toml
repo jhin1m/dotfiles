@@ -4,12 +4,61 @@ agent_panel_sort = "priority"
 
 show_agent_labels_on_pane_borders = true
 status_indicators = "symbols"
+# Sidebar rộng hơn chút để tên task không bị cắt
+sidebar_width = 34
+sidebar_max_width = 44
+# Spaces: mỗi space 1 dòng; branch main/master ẩn đi, branch khác hiện mờ cạnh tên
+[ui.sidebar.spaces]
+row_gap = 0
+rows = [
+  ["state_icon", "workspace",
+   { token = "branch", dim = true, rules = [{ equals = "main", hide = true }, { equals = "master", hide = true }] },
+   "git_status"],
+]
+
+# Agents: màu rực chỉ dành cho trạng thái; workspace lùi về xám để không lẫn với trạng thái.
+#   working = cam đậm | blocked = đỏ hồng đậm (cần bạn) | done = xanh lá | idle = xám mờ
+# Dòng 1 chỉ in đậm khi đang làm; lúc rảnh chữ thường, dịu hơn để agent đang chạy nổi lên.
+[ui.sidebar.agents]
+row_gap = 1
+rows = [
+  ["state_icon", { token = "terminal_title_stripped", fg = "#a9b1d6", bold = false, dim = false }],
+  [{ token = "workspace", fg = "#6b7394", bold = false, dim = false },
+   { token = "state_text", fg = "#565f89", rules = [
+       { contains = "blocked", fg = "#f7768e", bold = true },
+       { contains = "done", fg = "#9ece6a" },
+       { contains = "working", fg = "#ff9e64", bold = true },
+   ] },
+   { token = "agent", fg = "#bb9af7", rules = [{ equals = "claude", ignore_case = true, hide = true }] }],
+]
+
+# Claude: dùng title gốc vì nó có spinner ◐◑ tự chạy khi đang làm (herdr không animate icon).
+# Đang làm: title cam đậm. Rảnh (✳): title thường, xám sáng.
+[ui.sidebar.agents.rows_by_agent]
+claude = [
+  [{ token = "terminal_title", fg = "#a9b1d6", bold = false, dim = false, rules = [
+      { starts_with = "◐", fg = "#ff9e64", bold = true }, { starts_with = "◑", fg = "#ff9e64", bold = true },
+      { starts_with = "◒", fg = "#ff9e64", bold = true }, { starts_with = "◓", fg = "#ff9e64", bold = true },
+  ] }],
+  [{ token = "workspace", fg = "#6b7394", bold = false, dim = false },
+   { token = "state_text", fg = "#565f89", rules = [
+       { contains = "blocked", fg = "#f7768e", bold = true },
+       { contains = "done", fg = "#9ece6a" },
+       { contains = "working", fg = "#ff9e64", bold = true },
+   ] }],
+]
+
 [ui.toast]
 delivery = "terminal"
 
 [theme]
-name = "rose-pine"
+name = "tokyo-night"
 auto_switch = false
+
+[theme.custom]
+# Sidebar tối hơn vùng terminal để có ranh giới; dòng agent đang focus nổi hẳn
+sidebar_bg = "#16161e"
+active_row_bg = "#292e42"
 
 [experimental]
 kitty_graphics = true
