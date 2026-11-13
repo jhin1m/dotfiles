@@ -1,0 +1,31 @@
+id = "sidebar-tree"
+name = "Sidebar tree"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+description = "Draws the Agents panel as a tree: one header per space, agents as ├ └ branches under it"
+platforms = ["macos", "linux"]
+
+# The watcher only feeds two custom tokens ($tree_head, $tree_line); the look
+# lives in config.toml [ui.sidebar.agents]. Commands run through sh so the
+# script path resolves from the plugin root, not the server's cwd.
+[[startup]]
+command = ["sh", "-c", "exec /usr/bin/python3 \"$HERDR_PLUGIN_ROOT/sidebar_tree.py\" start"]
+
+# Self-heal: a new agent restarts the watcher if it died (no-op when running).
+[[events]]
+on = "pane.agent_detected"
+command = ["sh", "-c", "exec /usr/bin/python3 \"$HERDR_PLUGIN_ROOT/sidebar_tree.py\" start"]
+
+[[actions]]
+id = "restart"
+title = "Restart sidebar tree"
+description = "Stop and start the tree watcher"
+contexts = ["global"]
+command = ["sh", "-c", "exec /usr/bin/python3 \"$HERDR_PLUGIN_ROOT/sidebar_tree.py\" restart"]
+
+[[actions]]
+id = "stop"
+title = "Stop sidebar tree"
+description = "Stop the watcher and remove the tree tokens"
+contexts = ["global"]
+command = ["sh", "-c", "exec /usr/bin/python3 \"$HERDR_PLUGIN_ROOT/sidebar_tree.py\" stop"]
