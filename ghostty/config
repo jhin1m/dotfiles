@@ -12,6 +12,8 @@ font-size = 15
 # Giãn dòng để mắt bớt dính dòng
 adjust-cell-height = 12%
 font-thicken = true
+# Maple Mono NF thiếu ◐◑◒◓ ✳ (spinner/icon của herdr và Claude) → lấy từ Menlo, tránh macOS chọn bừa font khác
+font-codepoint-map = U+25D0-U+25D3,U+2733=Menlo
 
 # --- Cửa sổ ---
 # Nền đặc: không trong suốt/blur để chữ không lẫn với hình phía sau
